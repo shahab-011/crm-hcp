@@ -44,12 +44,12 @@ export const submitInteraction = createAsyncThunk(
 // Send message to AI Assistant
 export const sendChatMessage = createAsyncThunk(
   "interaction/sendChatMessage",
-  async (message, { rejectWithValue }) => {
+  async ({ message, current_form }, { rejectWithValue }) => {
     try {
       const response = await fetch(`${API_URL}/interaction/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, current_form }),
       });
       if (!response.ok) {
         throw new Error("Failed to send message to AI");
@@ -166,8 +166,8 @@ const interactionSlice = createSlice({
           content: message,
         });
 
-        // If intent is log, auto-fill form and set suggested follow-ups
-        if (intent === "log" && extracted_data) {
+        // If intent is log or edit, auto-fill form and set suggested follow-ups
+        if ((intent === "log" || intent === "edit") && extracted_data) {
           state.formData = {
             ...state.formData,
             hcpName: extracted_data.hcpName || state.formData.hcpName,
@@ -180,6 +180,7 @@ const interactionSlice = createSlice({
             summary: extracted_data.summary || state.formData.summary,
             sentiment: extracted_data.sentiment || state.formData.sentiment,
             outcomes: extracted_data.outcomes || state.formData.outcomes,
+            followupActions: extracted_data.followupActions || state.formData.followupActions,
           };
 
           // Parse suggested follow-ups

@@ -42,6 +42,7 @@ class InteractionCreate(BaseModel):
 
 class ChatInput(BaseModel):
     message: str
+    current_form: Optional[Dict[str, Any]] = None
 
 # ---- DB HELPER ----
 def get_db():
@@ -130,13 +131,15 @@ def chat_interaction(data: ChatInput):
         raise HTTPException(status_code=400, detail="Empty message")
 
     try:
-        # Invoke LangGraph agent
-        result = agent.invoke({"user_input": user_input})
+        # Invoke LangGraph agent with current_form context
+        result = agent.invoke({
+            "user_input": user_input,
+            "current_form": data.current_form or {}
+        })
         intent = result.get("intent", "log")
         agent_result = result.get("result", {})
 
         if intent == "log":
-            # agent_result contains {"status": "logged", "data": {...}}
             log_data = agent_result.get("data", {})
             hcp = log_data.get("hcpName", "Doctor")
             prod = log_data.get("product", "product")
@@ -158,6 +161,27 @@ def chat_interaction(data: ChatInput):
                 "extracted_data": log_data
             }
             
+        elif intent == "edit":
+            edit_data = agent_result.get("data", {})
+            bot_message = "🤖 AI updated the form fields successfully!\n\n"
+            
+            changes = []
+            if data.current_form:
+                for k, v in edit_data.items():
+                    if data.current_form.get(k) != v:
+                        changes.append(f"• {k}: '{data.current_form.get(k)}' ➔ '{v}'")
+            
+            if changes:
+                bot_message += "\n".join(changes)
+            else:
+                bot_message += "Applied requested changes to the fields."
+
+            return {
+                "intent": "edit",
+                "message": bot_message,
+                "extracted_data": edit_data
+            }
+            
         elif intent == "compliance":
             return {
                 "intent": "compliance",
@@ -176,7 +200,7 @@ def chat_interaction(data: ChatInput):
                 "message": f"🤖 Follow-up Actions Recommended:\n\n{agent_result}"
             }
             
-        else: # e.g. edit or other
+        else: # e.g. other
             msg = agent_result.get("status", "processed") if isinstance(agent_result, dict) else str(agent_result)
             return {
                 "intent": intent,

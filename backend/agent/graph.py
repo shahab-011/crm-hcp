@@ -11,7 +11,7 @@ from backend.tools.compliance import compliance_check_tool
 def detect_intent(state: AgentState) -> AgentState:
     text = state["user_input"].lower()
 
-    if "edit" in text:
+    if any(word in text for word in ["edit", "correction", "actually", "sorry", "change", "mistake", "update", "incorrect"]):
         state["intent"] = "edit"
     elif "summary" in text:
         state["intent"] = "summary"
@@ -32,8 +32,8 @@ def log_node(state: AgentState) -> AgentState:
 
 def edit_node(state: AgentState) -> AgentState:
     state["result"] = edit_interaction_tool(
-        interaction_id=1,
-        new_summary="Updated by LangGraph"
+        user_text=state["user_input"],
+        current_form=state.get("current_form", {})
     )
     return state
 

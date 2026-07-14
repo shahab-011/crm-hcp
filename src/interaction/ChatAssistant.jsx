@@ -10,6 +10,7 @@ export default function ChatAssistant() {
   // Redux state
   const messages = useSelector((state) => state.interaction.messages);
   const chatLoading = useSelector((state) => state.interaction.chatLoading);
+  const formData = useSelector((state) => state.interaction.formData);
 
   // Auto scroll to bottom
   const scrollToBottom = () => {
@@ -33,8 +34,8 @@ export default function ChatAssistant() {
     
     setInput("");
 
-    // Dispatch API call
-    dispatch(sendChatMessage(clean));
+    // Dispatch API call with current form context
+    dispatch(sendChatMessage({ message: clean, current_form: formData }));
   };
 
   const handleKeyDown = (e) => {

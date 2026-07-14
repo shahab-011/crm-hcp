@@ -38,6 +38,9 @@ export default function InteractionForm() {
   const [sampleInput, setSampleInput] = useState("");
   const [materialsList, setMaterialsList] = useState([]);
   const [samplesList, setSamplesList] = useState([]);
+  
+  // Enforce AI-First CRM Rule: manual edits disabled by default
+  const [allowManualEdit, setAllowManualEdit] = useState(false);
 
   // Auto-set Date and Time if empty on mount
   useEffect(() => {
@@ -66,6 +69,35 @@ export default function InteractionForm() {
     ].join("; ");
     dispatch(updateFormField({ field: "product", value: combined }));
   }, [materialsList, samplesList, dispatch]);
+
+  // Sync state.formData.product back to materials/samples list (for AI auto-fill/edits)
+  useEffect(() => {
+    if (formData.product) {
+      const items = formData.product.split(";").map(s => s.trim()).filter(Boolean);
+      const mats = [];
+      const samps = [];
+      items.forEach(item => {
+        if (item.startsWith("[Material]")) {
+          mats.push(item.replace("[Material]", "").trim());
+        } else if (item.startsWith("[Sample]")) {
+          samps.push(item.replace("[Sample]", "").trim());
+        } else if (item) {
+          mats.push(item);
+        }
+      });
+      
+      // Update lists if they differ to avoid infinite loops
+      if (JSON.stringify(mats) !== JSON.stringify(materialsList)) {
+        setMaterialsList(mats);
+      }
+      if (JSON.stringify(samps) !== JSON.stringify(samplesList)) {
+        setSamplesList(samps);
+      }
+    } else {
+      if (materialsList.length > 0) setMaterialsList([]);
+      if (samplesList.length > 0) setSamplesList([]);
+    }
+  }, [formData.product]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -168,6 +200,50 @@ export default function InteractionForm() {
       
       <form className="hcp-form" onSubmit={handleSubmit}>
         
+        {/* Enforce AI-First CRM Rule Lock */}
+        <div style={{
+          gridColumn: "span 2",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          background: allowManualEdit ? "#fffbeb" : "#f8fafc",
+          padding: "10px 14px",
+          borderRadius: "8px",
+          border: allowManualEdit ? "1px solid #fef3c7" : "1px solid #e2e8f0",
+          marginBottom: "6px"
+        }}>
+          <input
+            type="checkbox"
+            id="allowManualEdit"
+            checked={allowManualEdit}
+            onChange={(e) => {
+              setAllowManualEdit(e.target.checked);
+              if (e.target.checked) {
+                toast("Manual editing unlocked. Please use AI Assistant primarily!");
+              } else {
+                toast("Form locked. Fill or update using AI Assistant on the right!");
+              }
+            }}
+            style={{ width: "16px", height: "16px", cursor: "pointer" }}
+          />
+          <label 
+            htmlFor="allowManualEdit" 
+            style={{ 
+              textTransform: "none", 
+              fontSize: "12.5px", 
+              color: allowManualEdit ? "#b45309" : "#475569", 
+              cursor: "pointer", 
+              fontWeight: "600",
+              margin: 0,
+              letterSpacing: "normal"
+            }}
+          >
+            {allowManualEdit 
+              ? "⚠️ Manual Override Enabled (Click to Lock Form and Enforce AI Control)" 
+              : "🔒 Form is Locked by Default (Utilize AI Assistant on the right to fill/edit)"}
+          </label>
+        </div>
+
         {/* HCP Name & Interaction Type */}
         <div className="form-row">
           <div className="form-group">
@@ -176,9 +252,10 @@ export default function InteractionForm() {
               id="hcpName"
               name="hcpName"
               className="input-control"
-              placeholder="Search or select HCP..."
+              placeholder={allowManualEdit ? "Search or select HCP..." : "Populated by AI Assistant..."}
               value={formData.hcpName}
               onChange={handleChange}
+              readOnly={!allowManualEdit}
               required
             />
           </div>
@@ -190,6 +267,7 @@ export default function InteractionForm() {
               className="input-control"
               value={formData.interactionType}
               onChange={handleChange}
+              disabled={!allowManualEdit}
             >
               <option value="Meeting">Meeting</option>
               <option value="Call">Call</option>
@@ -209,6 +287,7 @@ export default function InteractionForm() {
               className="input-control"
               value={formData.date}
               onChange={handleChange}
+              readOnly={!allowManualEdit}
             />
           </div>
           <div className="form-group">
@@ -220,6 +299,7 @@ export default function InteractionForm() {
               className="input-control"
               value={formData.time}
               onChange={handleChange}
+              readOnly={!allowManualEdit}
             />
           </div>
         </div>
@@ -231,13 +311,14 @@ export default function InteractionForm() {
             id="attendees"
             name="attendees"
             className="input-control"
-            placeholder="Enter names or search..."
+            placeholder={allowManualEdit ? "Enter names..." : "Populated by AI..."}
             value={formData.attendees}
             onChange={handleChange}
+            readOnly={!allowManualEdit}
           />
         </div>
 
-        {/* Topics Discussed + Voice Note inline mic */}
+        {/* Topics Discussed */}
         <div className="form-group">
           <label htmlFor="topics">Topics Discussed</label>
           <div className="textarea-wrapper">
@@ -245,14 +326,16 @@ export default function InteractionForm() {
               id="topics"
               name="topics"
               className="input-control textarea-control"
-              placeholder="Enter key discussion points..."
+              placeholder={allowManualEdit ? "Enter key points..." : "Describe interaction to AI to populate..."}
               value={formData.topics}
               onChange={handleChange}
+              readOnly={!allowManualEdit}
             />
             <button
               className={`mic-button-inline ${isRecording ? "recording" : ""}`}
               onClick={handleSpeechRecognition}
               title={isRecording ? "Stop recording" : "Record voice note"}
+              disabled={!allowManualEdit}
             >
               🎙️
             </button>
@@ -262,6 +345,7 @@ export default function InteractionForm() {
             className="btn-secondary-light"
             onClick={handleSpeechRecognition}
             style={{ marginTop: "4px" }}
+            disabled={!allowManualEdit}
           >
             🗣️ Summarize from Voice Note (Requires Consent)
           </button>
@@ -274,22 +358,29 @@ export default function InteractionForm() {
             <div className="input-with-button">
               <input
                 className="input-control"
-                placeholder="Search or add materials (e.g. Brochure)..."
+                placeholder={allowManualEdit ? "Search or add materials..." : "Populated by AI..."}
                 value={materialInput}
                 onChange={(e) => setMaterialInput(e.target.value)}
                 list="materials-datalist"
+                readOnly={!allowManualEdit}
               />
               <datalist id="materials-datalist">
                 {AVAILABLE_MATERIALS.map(m => <option key={m} value={m} />)}
               </datalist>
-              <button onClick={handleAddMaterial}>🔍 Search/Add</button>
+              <button onClick={handleAddMaterial} disabled={!allowManualEdit}>🔍 Search/Add</button>
             </div>
             
             <div className="tags-container">
               {materialsList.map(item => (
                 <span key={item} className="tag-pill">
                   📄 {item}
-                  <button type="button" onClick={() => removeMaterial(item)}>&times;</button>
+                  <button 
+                    type="button" 
+                    onClick={() => allowManualEdit && removeMaterial(item)}
+                    disabled={!allowManualEdit}
+                  >
+                    &times;
+                  </button>
                 </span>
               ))}
             </div>
@@ -302,22 +393,29 @@ export default function InteractionForm() {
             <div className="input-with-button">
               <input
                 className="input-control"
-                placeholder="Search or add samples (e.g. 10mg tablets)..."
+                placeholder={allowManualEdit ? "Search or add samples..." : "Populated by AI..."}
                 value={sampleInput}
                 onChange={(e) => setSampleInput(e.target.value)}
                 list="samples-datalist"
+                readOnly={!allowManualEdit}
               />
               <datalist id="samples-datalist">
                 {AVAILABLE_SAMPLES.map(s => <option key={s} value={s} />)}
               </datalist>
-              <button onClick={handleAddSample}>💊 Add Sample</button>
+              <button onClick={handleAddSample} disabled={!allowManualEdit}>💊 Add Sample</button>
             </div>
             
             <div className="tags-container">
               {samplesList.map(item => (
                 <span key={item} className="tag-pill">
                   🧬 {item}
-                  <button type="button" onClick={() => removeSample(item)}>&times;</button>
+                  <button 
+                    type="button" 
+                    onClick={() => allowManualEdit && removeSample(item)}
+                    disabled={!allowManualEdit}
+                  >
+                    &times;
+                  </button>
                 </span>
               ))}
             </div>
@@ -336,6 +434,7 @@ export default function InteractionForm() {
                   value={s}
                   checked={formData.sentiment === s}
                   onChange={handleChange}
+                  disabled={!allowManualEdit}
                 />
                 <span className="sentiment-card">{s}</span>
               </label>
@@ -350,9 +449,10 @@ export default function InteractionForm() {
             id="outcomes"
             name="outcomes"
             className="input-control"
-            placeholder="Key outcomes or agreements..."
+            placeholder={allowManualEdit ? "Key outcomes..." : "Populated by AI..."}
             value={formData.outcomes}
             onChange={handleChange}
+            readOnly={!allowManualEdit}
             style={{ minHeight: "60px" }}
           />
         </div>
@@ -364,9 +464,10 @@ export default function InteractionForm() {
             id="followupActions"
             name="followupActions"
             className="input-control"
-            placeholder="Enter next steps or tasks..."
+            placeholder={allowManualEdit ? "Enter next steps..." : "Populated by AI..."}
             value={formData.followupActions}
             onChange={handleChange}
+            readOnly={!allowManualEdit}
             style={{ minHeight: "60px" }}
           />
 
