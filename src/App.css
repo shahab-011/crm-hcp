@@ -43,10 +43,12 @@ body {
 .app-container {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 24px 32px;
+  padding: 16px 24px;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
+  overflow: hidden;
 }
 
 /* Header */
@@ -54,12 +56,13 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 16px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .app-header-left h1 {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   color: #1e293b;
   letter-spacing: -0.025em;
@@ -69,9 +72,9 @@ body {
 }
 
 .app-header-left p {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 /* Main Grid Layout */
@@ -79,8 +82,36 @@ body {
   display: grid;
   grid-template-columns: 1.8fr 1.2fr;
   gap: 24px;
-  align-items: start;
+  flex: 1;
+  overflow: hidden;
+  align-items: stretch;
 }
+
+/* Left Column: Form & History scroll independently */
+.form-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  height: 100%;
+  padding-right: 8px;
+}
+
+/* Custom scrollbar for form column */
+.form-column::-webkit-scrollbar {
+  width: 6px;
+}
+.form-column::-webkit-scrollbar-track {
+  background: transparent;
+}
+.form-column::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.form-column::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 
 /* Glass Cards */
 .glass-card {

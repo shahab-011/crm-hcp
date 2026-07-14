@@ -16,12 +16,12 @@ function App() {
 
       {/* Main Grid: Form + Chat Sidebar */}
       <main className="dashboard-grid">
-        <InteractionForm />
+        <div className="form-column">
+          <InteractionForm />
+          <InteractionList />
+        </div>
         <ChatAssistant />
       </main>
-
-      {/* History Log */}
-      <InteractionList />
     </div>
   );
 }
