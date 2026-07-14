@@ -9,7 +9,7 @@ def get_groq_client():
 
 def call_llm(prompt: str) -> str:
     client = get_groq_client()
-    model = os.getenv("GROQ_MODEL", "gemma2-9b-it")
+    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
     response = client.chat.completions.create(
         model=model,
